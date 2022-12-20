@@ -1,0 +1,119 @@
+Remove-Variable * -ErrorAction SilentlyContinue; Remove-Module *; $error.Clear();
+$stopWatch = [system.diagnostics.stopwatch]::StartNew()
+$path = "C:\AoC2022\"
+$file = "Day11test.txt"
+$data = get-content -path ($path + $file)
+
+$datalines=0
+$Monkey = ($data | Where-Object{$_ -like "Monkey*"}).count - 1
+$MonkeyInspect = @()
+$monkeyNumber = 0
+[long]$lcm =0 
+[System.Collections.ArrayList]$Items = @()
+[System.Collections.ArrayList]$Operation = @()
+[System.Collections.ArrayList]$Test = @()
+[System.Collections.ArrayList]$TestTrue = @()
+[System.Collections.ArrayList]$TestFalse = @()
+
+#Functions to calculate LCM
+function gcd ($a, $b)  {
+    function pgcd ($n, $m)  {
+        if($n -le $m) { 
+            if($n -eq 0) {$m}
+            else{pgcd $n ($m%$n)}
+        }
+        else {pgcd $m $n}
+    }
+    $n = [Math]::Abs($a)
+    $m = [Math]::Abs($b)
+    (pgcd $n $m)
+}
+function lcm ($a, $b)  {
+    [Math]::Abs($a*$b)/(gcd $a $b)
+}
+
+#parse data and put into various arrays
+for($x=0;$x -le $Monkey;$x++){
+    #get starting items
+    $datalines++
+    $items += $data[$datalines].Substring($data[$datalines].IndexOf(":")+2,$data[$datalines].Length-$data[$datalines].IndexOf(":")-2).Replace(",","")
+    #get operations
+    $datalines++
+    $operation += $data[$datalines].split("=")[1].Substring(1,($data[$datalines].Split("=")[1].length)-1)
+    #get Test
+    $datalines++
+    $test += $data[$datalines].split(" ")[5]
+    #get Test is true
+    $datalines++
+    $testTrue += $data[$datalines].Split(" ")[9]
+    #Get Test is false
+    $datalines++
+    $testFalse += $data[$datalines].Split(" ")[9]
+    #Skip blank Line
+    $datalines++
+    #Skip Monkey
+    $datalines++
+    $monkeyInspect += 0
+}
+
+#Reducing worry level by calculating LCM of all the monkies.
+#put all the worry levels into an array
+[int32[]]$LCMArray=@()
+for($loop1=0;$loop1 -lt $items.Count;$loop1++){
+    foreach($line in $items[$loop1].split(" ")){
+        if($line -ne "") {$LCMArray += $line}
+    }
+}
+
+#calculate LCM         
+$LCM = lcm $LCMArray[0] $LCMArray[1]
+for($loop1=2; $loop1 -lt $LCMArray.count;$loop1++){
+    $LCM = lcm $LCM $LCMArray[$loop1] 
+}
+
+for($x=1; $x -le 10000; $x++){
+    for($y=0; $y -le $Monkey; $y++){
+        foreach($line in $Items[$y].split(" ")){
+            if($line -eq ""){continue}
+            [double]$worry = $line
+            #worried level increases during inspection
+            switch($Operation[$y].split(" ")[1])
+            {
+                * {
+                    if($Operation[$y].split(" ")[2] -eq "old"){ $worry = $worry * $worry }
+                    else { $worry = $worry * $Operation[$y].split(" ")[2]}
+                }
+                + {
+                    if($Operation[$y].split(" ")[2] -eq "old"){ $worry = $worry + $worry }
+                    else { $worry = $worry + $Operation[$y].split(" ")[2]}
+                }
+            }
+            #Monkey is bored, worry level goes down, /3 rounded down
+# (Part 1)   $worry = [math]::Floor($worry/3)
+            $worry = $worry % $LCM
+
+            #check divisibilty test  (True/False)
+            if($worry/$test[$y] -eq [math]::Floor($worry/$test[$y])){
+                #test is true
+                if($items[$TestTrue[$y]].Length -eq 0){$items[$TestTrue[$y]] += $worry}
+                else{$items[$TestTrue[$y]] += " "+$worry}
+            }
+            else{
+                #test is false
+                if($items[$TestFalse[$y]].Length -eq 0){$items[$TestFalse[$y]] += $worry}
+                else{$items[$TestFalse[$y]] += " "+$worry}
+            }
+            $MonkeyInspect[$y]++
+        }
+        $Items[$y]=""
+    }
+}
+
+for($z=0;$z -le $Monkey;$z++){
+    write-host "Monkey $z Inspected" $MonkeyInspect[$z] "times"
+    }
+
+$MonkeyInspect = $MonkeyInspect | sort -Descending
+write-host "Monkey Business is" ($MonkeyInspect[0] * $MonkeyInspect[1])
+
+$stopWatch.Elapsed.TotalSeconds
